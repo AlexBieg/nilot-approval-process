@@ -18,8 +18,33 @@ import ScrollPin from '../components/ScrollPin.astro';
         <span class="w-1 h-2 bg-text-muted rounded-full mt-2 animate-bounce"></span>
       </div>
     </div>
+
+    <div class="mt-12">
+      <button id="verify-cert-btn" class="text-xs tracking-[0.2em] text-text-muted font-mono border border-divider rounded-full px-5 py-2 hover:border-primary hover:text-primary transition-colors cursor-pointer bg-transparent">
+        Verify a Certificate
+      </button>
+    </div>
   </div>
 </ScrollPin>
+
+<input type="file" id="cert-file-input" accept="image/*" class="hidden" />
+
+<div id="verify-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4" style="display:none">
+  <div class="absolute inset-0 bg-black/40" id="verify-modal-bg"></div>
+  <div class="relative bg-bg rounded-2xl max-w-lg w-full max-h-[80vh] overflow-y-auto p-8 shadow-2xl border border-divider">
+    <button id="verify-modal-close" class="absolute top-4 right-4 text-text-muted hover:text-text transition-colors cursor-pointer bg-transparent border-none text-2xl leading-none">&times;</button>
+    <h3 class="text-2xl font-display font-bold mb-6">Certificate Verified</h3>
+    <div id="verify-results" class="space-y-4 text-left">
+    </div>
+    <div id="verify-error" class="hidden text-center">
+      <p class="text-lg text-text-muted mb-2">Could not read the certificate.</p>
+      <p class="text-sm text-text-muted">Make sure you're uploading a valid Nilot Wings certificate image.</p>
+    </div>
+    <div id="verify-loading" class="hidden text-center py-8">
+      <p class="text-text-muted">Scanning certificate...</p>
+    </div>
+  </div>
+</div>
 
 <script>
   import { gsap } from 'gsap';
@@ -112,4 +137,227 @@ import ScrollPin from '../components/ScrollPin.astro';
   scrollTl
     .to('[data-anim="subtitle"]', { opacity: 1, duration: 0.5 })
     .to('[data-anim="arrow"]', { opacity: 1, duration: 0.3 });
+
+  // --- Certificate Verification ---
+  import jsQR from 'jsqr';
+
+  const verifyBtn = document.getElementById('verify-cert-btn');
+  const fileInput = document.getElementById('cert-file-input');
+  const modal = document.getElementById('verify-modal');
+  const modalBg = document.getElementById('verify-modal-bg');
+  const modalClose = document.getElementById('verify-modal-close');
+  const resultsEl = document.getElementById('verify-results');
+  const errorEl = document.getElementById('verify-error');
+  const loadingEl = document.getElementById('verify-loading');
+
+  verifyBtn.addEventListener('click', () => fileInput.click());
+
+  fileInput.addEventListener('change', async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    showModal();
+    resultsEl.innerHTML = '';
+    resultsEl.classList.add('hidden');
+    errorEl.classList.add('hidden');
+    loadingEl.classList.remove('hidden');
+
+    try {
+      const payload = await decodeCertificateImage(file);
+      const answers = await parsePayload(payload);
+      renderAnswers(answers);
+    } catch (err) {
+      console.error('Certificate verification failed:', err);
+      loadingEl.classList.add('hidden');
+      errorEl.classList.remove('hidden');
+    } finally {
+      fileInput.value = '';
+    }
+  });
+
+  function showModal() {
+    modal.style.display = '';
+    document.body.style.overflow = 'hidden';
+  }
+
+  function hideModal() {
+    modal.style.display = 'none';
+    document.body.style.overflow = '';
+    loadingEl.classList.add('hidden');
+  }
+
+  modalBg.addEventListener('click', hideModal);
+  modalClose.addEventListener('click', hideModal);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') hideModal(); });
+
+  async function decodeCertificateImage(file) {
+    const img = await loadImage(file);
+    const { width: w, height: h } = img;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0);
+
+    const imageData = ctx.getImageData(0, 0, w, h);
+
+    let code = jsQR(imageData.data, w, h);
+    if (!code) {
+      code = jsQR(imageData.data, w, h, { inversionAttempts: 'attemptBoth' });
+    }
+    if (!code) {
+      const grayData = toGrayscale(imageData.data, w, h);
+      code = jsQR(grayData, w, h, { inversionAttempts: 'attemptBoth' });
+    }
+    if (!code) {
+      const cropY = Math.floor(h * 0.45);
+      const cropH = h - cropY;
+      const cropCanvas = document.createElement('canvas');
+      cropCanvas.width = w;
+      cropCanvas.height = cropH;
+      const cropCtx = cropCanvas.getContext('2d');
+      cropCtx.drawImage(canvas, 0, cropY, w, cropH, 0, 0, w, cropH);
+      const cropData = cropCtx.getImageData(0, 0, w, cropH);
+      code = jsQR(cropData.data, w, cropH, { inversionAttempts: 'attemptBoth' });
+      if (!code) {
+        const cropGray = toGrayscale(cropData.data, w, cropH);
+        code = jsQR(cropGray, w, cropH, { inversionAttempts: 'attemptBoth' });
+      }
+    }
+
+    if (!code) throw new Error('No QR code found in image');
+    return code.data;
+  }
+
+  function toGrayscale(data, w, h) {
+    const gray = new Uint8ClampedArray(data.length);
+    for (let i = 0; i < data.length; i += 4) {
+      const v = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
+      gray[i] = gray[i + 1] = gray[i + 2] = v;
+      gray[i + 3] = 255;
+    }
+    return gray;
+  }
+
+  function loadImage(file) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error('Failed to load image'));
+      img.src = URL.createObjectURL(file);
+    });
+  }
+
+  async function parsePayload(raw) {
+    let text = raw;
+
+    if (/^[a-zA-Z0-9+/=\n]+$/.test(raw) && !/^n:/.test(raw)) {
+      try {
+        const binary = atob(raw);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        const ds = new DecompressionStream('deflate-raw');
+        const writer = ds.writable.getWriter();
+        writer.write(bytes);
+        writer.close();
+        const reader = ds.readable.getReader();
+        const chunks = [];
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          chunks.push(value);
+        }
+        const totalLen = chunks.reduce((s, c) => s + c.length, 0);
+        const combined = new Uint8Array(totalLen);
+        let offset = 0;
+        chunks.forEach(c => { combined.set(c, offset); offset += c.length; });
+        text = new TextDecoder().decode(combined);
+      } catch {
+        try {
+          text = decodeURIComponent(escape(atob(raw)));
+        } catch {
+          text = raw;
+        }
+      }
+    }
+
+    const knownKeys = ['n', '1', '2', '3', '4', '5', '6', '7'];
+    const answers = {};
+    let currentKey = '';
+    let currentValue = '';
+    for (const line of text.split('\n')) {
+      const m = line.match(/^([^:]+):(.*)$/);
+      if (m && knownKeys.includes(m[1])) {
+        if (currentKey) answers[currentKey] = currentValue.replace(/\n$/, '');
+        currentKey = m[1];
+        currentValue = m[2];
+      } else if (currentKey) {
+        currentValue += '\n' + line;
+      }
+    }
+    if (currentKey) answers[currentKey] = currentValue.replace(/\n$/, '');
+    return answers;
+  }
+
+  function renderAnswers(answers) {
+    const q1opts = ['Yes', 'No', "I don't recall"];
+    const q5opts = ['My one pair of sneakers', 'Something context appropriate', "Those toe shoes", "A pair I recently thrifted"];
+
+    const questionLabels = {
+      'n': 'Name',
+      '1': 'Have you ever been convicted of a felony?',
+      '2': 'Do you own a gun?',
+      '3': 'Name 100 Women',
+      '4': 'Would you eat a cake baked by your Nilot even if you weren\'t hungry?',
+      '5': 'What kind of shoe would you wear to a Nilot party?',
+      '6': "What are Joe Rogan's best qualities?",
+      '7': 'Do you have any feedback for this quiz?',
+    };
+
+    function formatAnswer(key, value) {
+      if (key === '1') { const i = parseInt(value); return i >= 0 && i < q1opts.length ? q1opts[i] : value; }
+      if (key === '2' || key === '4') return value === 'y' ? 'Yes' : value === 'n' ? 'No' : value;
+      if (key === '5') { const i = parseInt(value); return i >= 0 && i < q5opts.length ? q5opts[i] : value; }
+      if (key === 'n') return value;
+      if (key === '3') {
+        if (/i'?m a nilot/i.test(value)) {
+          return '<span>Used the Nilot pass</span>';
+        }
+        const lines = value.split('\n').filter(l => l.trim());
+        const count = `${lines.length} ${lines.length === 1 ? 'woman' : 'women'} named`;
+        const listHtml = lines.map(l => `<li>${l}</li>`).join('');
+        return `
+          <span>${count}</span>
+          <button class="toggle-women inline-block ml-2 text-xs text-primary hover:underline cursor-pointer bg-transparent border-none font-mono" data-expanded="false">show all</button>
+          <ul class="hidden mt-2 text-sm text-text-muted list-disc list-inside" data-women-list>${listHtml}</ul>
+        `;
+      }
+      return value || '(no answer)';
+    }
+
+    let html = '';
+    for (const [key, label] of Object.entries(questionLabels)) {
+      const value = answers[key] ?? '';
+      html += `
+        <div class="border-b border-divider pb-3">
+          <p class="text-xs uppercase tracking-wider text-text-muted font-mono mb-1">${label}</p>
+          <div class="text-text">${formatAnswer(key, value)}</div>
+        </div>
+      `;
+    }
+
+    resultsEl.innerHTML = html;
+    resultsEl.addEventListener('click', (e) => {
+      const btn = e.target.closest('.toggle-women');
+      if (!btn) return;
+      const list = btn.parentElement.querySelector('[data-women-list]');
+      const expanded = btn.dataset.expanded === 'true';
+      btn.dataset.expanded = String(!expanded);
+      btn.textContent = expanded ? 'show all' : 'hide';
+      list.classList.toggle('hidden', expanded);
+    });
+    loadingEl.classList.add('hidden');
+    resultsEl.classList.remove('hidden');
+  }
 </script>
