@@ -11,17 +11,17 @@ const steps = [
 
 <ScrollPin id="process">
   <div class="max-w-5xl w-full px-8">
-    <h2 class="text-4xl sm:text-5xl md:text-7xl font-display font-bold text-center mb-20 opacity-0" data-anim="headline">
+    <h2 class="text-3xl sm:text-5xl md:text-7xl font-display font-bold text-center mb-10 opacity-0" data-anim="headline">
       How it works
     </h2>
 
     <!-- Progress bar -->
-    <div class="w-full h-1 bg-divider rounded-full mb-16">
+    <div class="w-full h-1 bg-divider rounded-full mb-8">
       <div class="h-full bg-primary rounded-full w-0" data-anim="progress"></div>
     </div>
 
     <!-- Steps -->
-    <div class="space-y-8">
+    <div class="space-y-5">
       {
         steps.map((step, i) => (
           <div
@@ -48,14 +48,12 @@ const steps = [
   import { ScrollTrigger } from 'gsap/ScrollTrigger';
   gsap.registerPlugin(ScrollTrigger);
 
-  const tl = gsap.timeline({
-    scrollTrigger: {
-      trigger: '#process',
-      start: 'top top',
-      end: 'bottom bottom',
-      toggleActions: 'play none none reverse',
-    },
-  });
+  const tl = gsap.timeline({ paused: true });
+
+  const processIO = new IntersectionObserver((entries) => {
+    if (entries[0].isIntersecting && tl.progress() === 0) tl.play();
+  }, { threshold: 0.1 });
+  processIO.observe(document.getElementById('process'));
 
   const colors = ['var(--color-primary)', 'var(--color-secondary)', 'var(--color-accent)', 'var(--color-primary)'];
 

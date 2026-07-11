@@ -6,6 +6,10 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --vh: 1vh;
+  }
+
   *,
   *::before,
   *::after {
@@ -48,6 +52,9 @@
 }
 
 @layer utilities {
+  .h-vh {
+    height: calc(var(--vh) * 100);
+  }
   .snap-section {
     scroll-snap-align: start;
     scroll-snap-stop: always;

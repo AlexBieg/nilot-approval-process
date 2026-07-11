@@ -4,19 +4,19 @@ import ScrollPin from '../components/ScrollPin.astro';
 
 <ScrollPin id="outcome">
   <div class="text-center px-8 max-w-3xl">
-    <h2 class="text-4xl sm:text-5xl md:text-8xl font-display font-bold opacity-0" data-anim="headline">
+    <h2 class="text-3xl sm:text-5xl md:text-8xl font-display font-bold opacity-0" data-anim="headline">
       Clarity at last.
     </h2>
 
-    <p id="summary-text" class="text-base sm:text-lg md:text-2xl text-text-muted mt-10 leading-relaxed opacity-0 relative" data-anim="summary">
+    <p id="summary-text" class="text-base sm:text-lg md:text-2xl text-text-muted mt-6 leading-relaxed opacity-0 relative" data-anim="summary">
       We appreciate the time you have spent applying and to honor that commitment you have been granted a pair of provisional Nilot Wings.
     </p>
 
-    <div class="mt-12 mb-4 opacity-0" data-anim="certificate">
+    <div class="mt-8 mb-4 opacity-0" data-anim="certificate">
       <canvas id="certificate-canvas" class="mx-auto max-w-full" width="560" height="400"></canvas>
     </div>
 
-    <div class="mt-12 opacity-0" data-anim="cta">
+    <div class="mt-8 opacity-0" data-anim="cta">
       <button id="save-wings-btn"
               class="inline-block bg-text text-bg font-semibold px-6 py-3 sm:px-10 sm:py-5 rounded-2xl text-base sm:text-lg hover:scale-105 transition-transform cursor-pointer border-none">
         Save your wings
@@ -257,14 +257,12 @@ import ScrollPin from '../components/ScrollPin.astro';
     }
   };
 
-  const tl = gsap.timeline({
-    scrollTrigger: {
-      trigger: '#outcome',
-      start: 'top top',
-      end: 'bottom bottom',
-      toggleActions: 'play none none reverse',
-    },
-  });
+  const tl = gsap.timeline({ paused: true });
+
+  const outcomeIO = new IntersectionObserver((entries) => {
+    if (entries[0].isIntersecting && tl.progress() === 0) tl.play();
+  }, { threshold: 0.1 });
+  outcomeIO.observe(document.getElementById('outcome'));
 
   tl.call(() => {
       if (!certRendered) {
@@ -278,6 +276,10 @@ import ScrollPin from '../components/ScrollPin.astro';
     .to({}, { duration: 0.25 })
     .to('[data-anim="certificate"]', { opacity: 1, duration: 0.4 })
     .to('[data-anim="cta"]', { opacity: 1, duration: 0.3 });
+
+  window.__playOutcomeTimeline = () => {
+    if (tl.progress() === 0) tl.play();
+  };
 
   function drawNilotWingsUnderline() {
     if (summary.dataset.drawn === 'true') return;
@@ -307,7 +309,7 @@ import ScrollPin from '../components/ScrollPin.astro';
     const d = `M 3 12 Q ${w * 0.15} 4 ${w * 0.35} 10 T ${w * 0.65} 8 T ${w - 3} 6`;
     path.setAttribute('d', d);
     path.setAttribute('stroke', 'var(--color-primary)');
-    path.setAttribute('stroke-width', '8');
+    path.setAttribute('stroke-width', window.innerWidth < 768 ? '5' : '8');
     path.setAttribute('fill', 'none');
     path.setAttribute('stroke-linecap', 'round');
     path.setAttribute('stroke-linejoin', 'round');

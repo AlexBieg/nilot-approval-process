@@ -7,7 +7,7 @@ import ScrollPin from '../components/ScrollPin.astro';
     <p class="text-sm uppercase tracking-[0.3em] text-text-muted font-mono mb-6 opacity-0" data-anim="eyebrow">
       A Visual Journey
     </p>
-    <h1 class="text-5xl sm:text-6xl md:text-8xl font-bold font-display leading-tight sm:leading-none mb-8 relative inline-block" id="hero-title">
+    <h1 class="text-4xl sm:text-6xl md:text-8xl font-bold font-display leading-tight sm:leading-none mb-8 relative inline-block" id="hero-title">
       So...<br />you want to date a Nilot?
     </h1>
     <p class="text-lg sm:text-xl md:text-2xl text-text-muted max-w-lg mx-auto opacity-0" data-anim="subtitle">
@@ -110,7 +110,7 @@ import ScrollPin from '../components/ScrollPin.astro';
     const d = `M 4 12 Q ${w * 0.15} 4 ${w * 0.35} 10 T ${w * 0.65} 8 T ${w - 4} 6`;
     path.setAttribute('d', d);
     path.setAttribute('stroke', 'var(--color-primary)');
-    path.setAttribute('stroke-width', '10');
+    path.setAttribute('stroke-width', window.innerWidth < 768 ? '6' : '10');
     path.setAttribute('fill', 'none');
     path.setAttribute('stroke-linecap', 'round');
     path.setAttribute('stroke-linejoin', 'round');
@@ -125,14 +125,7 @@ import ScrollPin from '../components/ScrollPin.astro';
     );
   }
 
-  const scrollTl = gsap.timeline({
-    scrollTrigger: {
-      trigger: '#hero',
-      start: 'top top',
-      end: 'bottom bottom',
-      toggleActions: 'play none none reverse',
-    },
-  });
+  const scrollTl = gsap.timeline({ paused: true });
 
   scrollTl
     .to('[data-anim="subtitle"]', { opacity: 1, duration: 0.5 })
