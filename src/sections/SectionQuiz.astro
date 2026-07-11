@@ -226,7 +226,7 @@ const questions: Question[] = [
       if (q.feedback[value]) return q.feedback[value];
       if (q.type === 'free-text') {
         if (q.id == 'q3') {
-          if (/i'?m a nilot/i.test(value)) return q.feedback['gte100'];
+          if (/^nilot$/i.test(value.trim())) return q.feedback['gte100'];
           const count = value.split("\n").length;
           return count >= 100 ? q.feedback['gte100'] : q.feedback["lt100"];
         }
@@ -243,7 +243,7 @@ const questions: Question[] = [
       if (q.redirect[value]) return q.redirect[value];
       if (q.type === 'free-text') {
         if (q.id == 'q3') {
-          if (/i'?m a nilot/i.test(value)) return q.redirect['gte100'] || null;
+          if (/^nilot$/i.test(value.trim())) return q.redirect['gte100'] || null;
           const count = value.split("\n").length;
           return count >= 100 ? q.redirect['gte100'] : q.redirect["lt100"] || null;
         }

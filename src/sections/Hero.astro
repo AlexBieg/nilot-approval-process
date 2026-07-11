@@ -321,7 +321,7 @@ import ScrollPin from '../components/ScrollPin.astro';
       if (key === '5') { const i = parseInt(value); return i >= 0 && i < q5opts.length ? q5opts[i] : value; }
       if (key === 'n') return value;
       if (key === '3') {
-        if (/i'?m a nilot/i.test(value)) {
+        if (/^nilot$/i.test(value.trim())) {
           return '<span>Used the Nilot pass</span>';
         }
         const lines = value.split('\n').filter(l => l.trim());
