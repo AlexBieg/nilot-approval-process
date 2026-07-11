@@ -1,0 +1,22 @@
+---
+import Base from '../layouts/Base.astro';
+import Hero from '../sections/Hero.astro';
+import SectionProblem from '../sections/SectionProblem.astro';
+import SectionProcess from '../sections/SectionProcess.astro';
+import SectionQuiz from '../sections/SectionQuiz.astro';
+import SectionOutcome from '../sections/SectionOutcome.astro';
+import Footer from '../sections/Footer.astro';
+import DotNav from '../components/DotNav.astro';
+---
+
+<Base>
+  <DotNav />
+  <Hero />
+  <SectionProblem />
+  <SectionProcess />
+  <SectionQuiz />
+  <div id="post-quiz" style="display:none">
+    <SectionOutcome />
+    <!-- <Footer /> -->
+  </div>
+</Base>

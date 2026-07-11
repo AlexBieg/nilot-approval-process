@@ -1,0 +1,335 @@
+---
+import ScrollPin from '../components/ScrollPin.astro';
+---
+
+<ScrollPin id="outcome" height="250vh">
+  <div class="text-center px-8 max-w-3xl">
+    <h2 class="text-4xl sm:text-5xl md:text-8xl font-display font-bold opacity-0" data-anim="headline">
+      Clarity at last.
+    </h2>
+
+    <p id="summary-text" class="text-base sm:text-lg md:text-2xl text-text-muted mt-10 leading-relaxed opacity-0 relative" data-anim="summary">
+      We appreciate the time you have spent applying and to honor that commitment you have been granted a pair of provisional Nilot Wings.
+    </p>
+
+    <div class="mt-12 mb-4 opacity-0" data-anim="certificate">
+      <canvas id="certificate-canvas" class="mx-auto max-w-full" width="560" height="400"></canvas>
+    </div>
+
+    <div class="mt-12 opacity-0" data-anim="cta">
+      <button id="save-wings-btn"
+              class="inline-block bg-text text-bg font-semibold px-6 py-3 sm:px-10 sm:py-5 rounded-2xl text-base sm:text-lg hover:scale-105 transition-transform cursor-pointer border-none">
+        Save your wings
+      </button>
+    </div>
+
+    <!-- Hidden wings SVG template for canvas rendering -->
+    <svg id="wings-template" class="hidden" width="280" height="120" viewBox="0 0 280 120" xmlns="http://www.w3.org/2000/svg">
+      <path d="M123 28 L6 18 Q6 26 12 28 L123 34 Z" fill="var(--color-primary)" opacity="0.5"/>
+      <path d="M123 38 L20 30 Q20 38 26 40 L123 44 Z" fill="var(--color-primary)" opacity="0.6"/>
+      <path d="M123 48 L34 42 Q34 50 40 52 L123 54 Z" fill="var(--color-primary)" opacity="0.8"/>
+      <path d="M123 58 L48 54 Q48 60 54 62 L123 64 Z" fill="var(--color-primary)"/>
+      <path d="M157 28 L274 18 Q274 26 268 28 L157 34 Z" fill="var(--color-primary)" opacity="0.5"/>
+      <path d="M157 38 L260 30 Q260 38 254 40 L157 44 Z" fill="var(--color-primary)" opacity="0.6"/>
+      <path d="M157 48 L246 42 Q246 50 240 52 L157 54 Z" fill="var(--color-primary)" opacity="0.8"/>
+      <path d="M157 58 L232 54 Q232 60 226 62 L157 64 Z" fill="var(--color-primary)"/>
+      <rect x="118" y="26" width="44" height="44" rx="8" fill="var(--color-primary)"/>
+      <text x="140" y="48" text-anchor="middle" dominant-baseline="central" font-family="var(--font-display)" font-size="28" font-weight="900" fill="var(--color-bg)">N</text>
+    </svg>
+
+  </div>
+</ScrollPin>
+
+<script>
+  import { gsap } from 'gsap';
+  import { ScrollTrigger } from 'gsap/ScrollTrigger';
+  import QRCode from 'qrcode';
+  gsap.registerPlugin(ScrollTrigger);
+
+  const summary = document.getElementById('summary-text');
+  if (summary) {
+    const letters = summary.textContent.split('').map(ch =>
+      `<span class="outcome-letter" style="opacity:1">${ch}</span>`
+    );
+    summary.innerHTML = letters.join('');
+  }
+
+  const certCanvas = document.getElementById('certificate-canvas');
+  const wingsTemplate = document.getElementById('wings-template');
+  const saveBtn = document.getElementById('save-wings-btn');
+
+  function getColors() {
+    const style = getComputedStyle(document.documentElement);
+    return {
+      bg: style.getPropertyValue('--color-bg').trim() || '#fdf6f0',
+      primary: style.getPropertyValue('--color-primary').trim() || '#e8b4b8',
+      text: style.getPropertyValue('--color-text').trim() || '#3d2c2e',
+    };
+  }
+
+  function buildCompactPayload() {
+    if (!window.quizAnswers || !Object.keys(window.quizAnswers).length) return '';
+    const a = window.quizAnswers;
+    const q1opts = ['Yes', 'No', "I don't recall"];
+    const q5opts = ['My one pair of sneakers', 'Something context appropriate', "Those toe shoes", "A pair I recently thrifted"];
+    const fields = [
+      { k: 'n', v: a.name },
+      { k: '1', v: q1opts.indexOf(a.q1) },
+      { k: '2', v: a.q2 === 'yes' ? 'y' : 'n' },
+      { k: '3', v: a.q3 },
+      { k: '4', v: a.q4 === 'yes' ? 'y' : 'n' },
+      { k: '5', v: q5opts.indexOf(a.q5) },
+      { k: '6', v: a.q6 },
+      { k: '7', v: a.q7 },
+    ];
+    return fields.map(f =>
+      f.k + ':' + (f.v == null || f.v === -1 ? '' : String(f.v))
+    ).join('\n');
+  }
+
+  function binaryToBase64(bytes) {
+    let binary = '';
+    const len = bytes.byteLength;
+    for (let i = 0; i < len; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary);
+  }
+
+  async function generateId() {
+    const payload = buildCompactPayload();
+    if (!payload) return '';
+
+    try {
+      const enc = new TextEncoder().encode(payload);
+      const cs = new CompressionStream('deflate-raw');
+      const writer = cs.writable.getWriter();
+      writer.write(enc);
+      writer.close();
+
+      const chunks = [];
+      const reader = cs.readable.getReader();
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+      }
+
+      const totalLen = chunks.reduce((s, c) => s + c.length, 0);
+      const combined = new Uint8Array(totalLen);
+      let offset = 0;
+      chunks.forEach(c => { combined.set(c, offset); offset += c.length; });
+
+      const compressed = binaryToBase64(combined);
+      const uncompressed = btoa(unescape(encodeURIComponent(payload)));
+
+      return compressed.length < uncompressed.length ? compressed : uncompressed;
+    } catch (e) {
+      return btoa(unescape(encodeURIComponent(payload)));
+    }
+  }
+
+  function renderCertificate(canvas, w) {
+    return new Promise((resolve) => {
+    if (!canvas || !wingsTemplate) return resolve();
+    const ctx = canvas.getContext('2d');
+    const colors = getColors();
+    const name = (window.quizAnswers?.name || '').trim() || 'Anonymous';
+    const payload = buildCompactPayload();
+
+    const wingW = w * 0.65;
+    const wingH = (wingW / 280) * 120;
+    const wingY = w * 0.05;
+    const scale = w / 560; // scale fonts relative to base 560px
+    const titleFont = Math.round(20 * scale);
+    const nameFont = Math.round(17 * scale);
+    const labelFont = Math.round(11 * scale);
+    const titleY = wingY + wingH + Math.round(38 * scale);
+    const nameY = titleY + Math.round(28 * scale);
+    const qrSize = Math.round(w * 0.22);
+    const qrY = nameY + Math.round(24 * scale);
+    const h = qrY + qrSize + Math.round(36 * scale);
+
+    canvas.width = w;
+    canvas.height = h;
+
+    ctx.fillStyle = colors.bg;
+    ctx.fillRect(0, 0, w, h);
+
+    const clone = wingsTemplate.cloneNode(true);
+    clone.querySelectorAll('*').forEach(el => {
+      const fill = el.getAttribute('fill');
+      const stroke = el.getAttribute('stroke');
+      if (fill?.includes('var(')) el.setAttribute('fill', fill === 'var(--color-bg)' ? colors.bg : colors.primary);
+      if (stroke?.includes('var(')) el.setAttribute('stroke', colors.primary);
+    });
+    const wingX = (w - wingW) / 2;
+
+    const svgData = new XMLSerializer().serializeToString(clone);
+    const svgUrl = URL.createObjectURL(new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' }));
+
+    const img = new Image();
+    img.onload = () => {
+      ctx.drawImage(img, wingX, wingY, wingW, wingH);
+      ctx.fillStyle = colors.text;
+      ctx.font = `bold ${titleFont}px Georgia, serif`;
+      ctx.textAlign = 'center';
+      ctx.fillText('Nilot Wings Certificate', w / 2, titleY);
+      ctx.font = `${nameFont}px Georgia, serif`;
+      ctx.fillText(`Awarded to ${name}`, w / 2, nameY);
+
+      const outerPad = Math.round(12 * scale);
+      const innerPad = Math.round(18 * scale);
+      const innerInnerPad = Math.round(22 * scale);
+
+      // Outer thick border
+      ctx.strokeStyle = colors.primary;
+      ctx.lineWidth = Math.round(4 * scale);
+      ctx.strokeRect(outerPad, outerPad, w - outerPad * 2, h - outerPad * 2);
+
+      // Inner thin border
+      ctx.strokeStyle = colors.primary;
+      ctx.globalAlpha = 0.4;
+      ctx.lineWidth = Math.round(1.5 * scale);
+      ctx.strokeRect(innerPad, innerPad, w - innerPad * 2, h - innerPad * 2);
+
+      // Innermost dotted border
+      ctx.globalAlpha = 0.25;
+      ctx.setLineDash([Math.round(4 * scale), Math.round(3 * scale)]);
+      ctx.strokeRect(innerInnerPad, innerInnerPad, w - innerInnerPad * 2, h - innerInnerPad * 2);
+      ctx.setLineDash([]);
+      ctx.globalAlpha = 1;
+
+      // Corner ornaments
+      const cSize = Math.round(8 * scale);
+      const cOff = outerPad - cSize / 2;
+      const corners = [
+        [cOff, cOff], [w - cOff, cOff],
+        [cOff, h - cOff], [w - cOff, h - cOff]
+      ];
+      ctx.fillStyle = colors.primary;
+      corners.forEach(([cx, cy]) => {
+        ctx.beginPath();
+        ctx.arc(cx, cy, Math.round(3 * scale), 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      if (!payload) { URL.revokeObjectURL(svgUrl); return resolve(); }
+
+      QRCode.toDataURL(payload, { width: qrSize, margin: 1, color: { dark: colors.text, light: colors.bg } })
+        .then(qrDataUrl => {
+          const qrImg = new Image();
+          qrImg.onload = () => {
+            ctx.drawImage(qrImg, (w - qrSize) / 2, qrY, qrSize, qrSize);
+            ctx.fillStyle = '#8b7b7a';
+            URL.revokeObjectURL(svgUrl);
+            resolve();
+          };
+          qrImg.src = qrDataUrl;
+        })
+        .catch(() => {
+          ctx.fillStyle = '#8b7b7a';
+          ctx.font = `${Math.round(10 * scale)}px monospace`;
+          ctx.fillText('QR unavailable', w / 2, qrY + Math.round(12 * scale));
+          URL.revokeObjectURL(svgUrl);
+          resolve();
+        });
+    };
+    img.src = svgUrl;
+    });
+  }
+
+  function renderPageCertificate() {
+    if (!certCanvas) return;
+    const parentW = certCanvas.parentElement?.clientWidth || 560;
+    const displayW = Math.min(parentW, 560);
+    const dpr = window.devicePixelRatio || 1;
+    certCanvas.style.width = displayW + 'px';
+    renderCertificate(certCanvas, displayW * dpr);
+  }
+
+  let certRendered = false;
+  ScrollTrigger.create({
+    trigger: '#outcome',
+    start: 'top+=50% top',
+    onEnter: () => {
+      if (!certRendered) {
+        certRendered = true;
+        renderPageCertificate();
+      }
+    },
+  });
+
+  const tl = gsap.timeline({
+    scrollTrigger: {
+      trigger: '#outcome',
+      start: 'top top',
+      end: 'bottom bottom',
+      scrub: 1,
+    },
+  });
+
+  tl.to('[data-anim="headline"]', { opacity: 1, duration: 0.4 })
+    .to('[data-anim="summary"]', { opacity: 1, duration: 0.4 })
+    .call(drawNilotWingsUnderline)
+    .to('[data-anim="certificate"]', { opacity: 1, duration: 0.4 })
+    .to('[data-anim="cta"]', { opacity: 1, duration: 0.3 });
+
+  function drawNilotWingsUnderline() {
+    if (summary.dataset.drawn === 'true') return;
+    summary.dataset.drawn = 'true';
+
+    const allLetters = Array.from(document.querySelectorAll('#summary-text .outcome-letter'));
+    const text = allLetters.map(s => s.textContent).join('');
+    const idx = text.lastIndexOf('Nilot Wings');
+    if (idx === -1) return;
+
+    const nilotSpans = allLetters.slice(idx, idx + 11);
+    const parentRect = summary.getBoundingClientRect();
+    const first = nilotSpans[0].getBoundingClientRect();
+    const last = nilotSpans[nilotSpans.length - 1].getBoundingClientRect();
+
+    const w = last.right - first.left;
+    const x = first.left - parentRect.left;
+    const y = first.bottom - parentRect.top;
+
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', `0 0 ${w} 18`);
+    svg.setAttribute('width', w);
+    svg.setAttribute('height', 18);
+    svg.style.cssText = `position:absolute;left:${x}px;top:${y}px;pointer-events:none;overflow:visible;`;
+
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    const d = `M 3 12 Q ${w * 0.15} 4 ${w * 0.35} 10 T ${w * 0.65} 8 T ${w - 3} 6`;
+    path.setAttribute('d', d);
+    path.setAttribute('stroke', 'var(--color-primary)');
+    path.setAttribute('stroke-width', '8');
+    path.setAttribute('fill', 'none');
+    path.setAttribute('stroke-linecap', 'round');
+    path.setAttribute('stroke-linejoin', 'round');
+
+    svg.appendChild(path);
+    summary.appendChild(svg);
+
+    const len = path.getTotalLength();
+    gsap.fromTo(path,
+      { strokeDasharray: len, strokeDashoffset: len },
+      { strokeDashoffset: 0, duration: 0.7, ease: 'power2.out' }
+    );
+  }
+
+  // Download button — renders high-res version
+  if (saveBtn) {
+    saveBtn.addEventListener('click', async () => {
+      const canvas = document.createElement('canvas');
+      await renderCertificate(canvas, 1400);
+      const name = (window.quizAnswers?.name || '').trim() || 'Anonymous';
+      canvas.toBlob(blob => {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `${name.replace(/\s+/g, '_')}_nilot_wings.png`;
+        a.click();
+      }, 'image/png');
+    });
+  }
+</script>

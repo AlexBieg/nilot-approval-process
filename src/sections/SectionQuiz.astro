@@ -1,0 +1,441 @@
+---
+interface Question {
+  id: string;
+  type: 'multiple-choice' | 'free-text' | 'yes-no';
+  question: string;
+  subtitle?: string;
+  options?: string[];
+  placeholder?: string;
+  feedback?: Record<string, string>;
+  redirect?: Record<string, string>;
+  nextLabel?: string;
+}
+
+const questions: Question[] = [
+  {
+    id: 'name',
+    type: 'free-text',
+    question: "What's your name?",
+    placeholder: 'Your full name...',
+    feedback: {
+      'anyText': "Nice to meet you. Let's get started.",
+      'noText': 'Anonymous applicant. Bold choice.',
+    },
+  },
+  {
+    id: 'q1',
+    type: 'multiple-choice',
+    question: 'Have you ever been convicted of a felony?',
+    subtitle: 'Be honest — we will find out.',
+    options: ['Yes', 'No', "I don't recall"],
+    feedback: {
+      'Yes': 'Look, this isn\'t ideal, but the justice system is broken and you will have a chance to explain yourself.',
+      'No': 'Don\'t feel too smug this is just basic shit',
+      "I don't recall": 'This was the worst possible choice',
+    },
+    redirect: {
+      "I don't recall": "https://careycenter.squarespace.com/blogcareycenter/the-hidden-cost-of-lying-in-a-relationship-how-dishonesty-destroys-trust-intimacy-and-peace"
+    }
+  },
+  {
+    id: 'q2',
+    type: 'yes-no',
+    question: 'Do you own a gun?',
+    feedback: {
+      'yes': 'Ewww',
+      'no': 'The bar is on the floor, but we\'ll take it',
+    },
+    redirect: {
+      'yes': 'https://en.wikipedia.org/wiki/Gun_violence_in_the_United_States',
+    },
+  },
+  {
+    id: 'q3',
+    type: 'free-text',
+    question: 'Name 100 Women',
+    placeholder: 'One name per line...',
+    feedback: {
+      'gte100': 'Well there are 100 lines at least so we\'ll take it',
+      'lt100': "come on man at least try a little",
+    },
+    redirect: {
+      "lt100": "https://en.wikipedia.org/wiki/Lists_of_women" 
+    }
+  },
+  {
+    id: 'q4',
+    type: 'yes-no',
+    question: 'Would you eat a cake baked by your Nilot even if you were\'t hungry?',
+    feedback: {
+      'yes': 'Of course cake is awesome',
+      'no': 'Truly insane behavior my dude. Do you not know what cake is?',
+    },
+    redirect: {
+      'no': 'https://en.wikipedia.org/wiki/Cake',
+    }
+  },
+  {
+    id: 'q5',
+    type: 'multiple-choice',
+    question: 'What kind of shoe would you wear to a Nilot party?',
+    options: ['My one pair of sneakers', 'Something context appropriate', "Those toe shoes", "A pair I recently thrifted"],
+    feedback: {
+      "My one pair of sneakers": "You are an adult, you need to have different shoes",
+      "Something context appropriate": "A little bland, but not horrible",
+      "Those toe shoes": "Absolutely not",
+      "A pair I recently thrifted": "We like it"
+    },
+    redirect: {
+      'My one pair of sneakers': 'https://en.wikipedia.org/wiki/List_of_shoe_styles',
+      'Those toe shoes': 'https://en.wikipedia.org/wiki/List_of_shoe_styles#/media/File:Toe_socks_+_toe_shoes.jpg'
+    }
+  },
+  {
+    id: 'q6',
+    type: 'free-text',
+    question: 'What are Joe Rogan\'s best qualities?',
+    placeholder: 'Answer here..',
+    feedback: {
+      'noText': 'Correct, he sucks',
+      'anyText': "I can't belive you actually typed something",
+    },
+    redirect: {
+      "anyText": "https://en.wikipedia.org/wiki/Disinformation_attack" 
+    }
+  },
+  {
+    id: 'q7',
+    type: 'free-text',
+    question: 'Do you have any feedback for this quiz?',
+    placeholder: 'Answer here..',
+    feedback: {
+      'noText': 'Yup it is perfect',
+      'anyText': "No you don't",
+    },
+  },
+];
+---
+
+<section id="quiz" style="height: 350vh" class="relative" data-completed="false">
+  <div class="sticky top-0 h-screen flex flex-col overflow-x-hidden">
+    <!-- Progress bar -->
+    <div class="pt-8 px-8">
+    <div class="max-w-2xl mx-auto">
+    <div class="mb-8">
+      <div class="flex justify-between text-sm text-text-muted font-mono mb-2">
+        <span id="quiz-progress-label">Question 1 of {questions.length}</span>
+        <span id="quiz-progress-pct">0%</span>
+      </div>
+      <div class="w-full h-1 bg-divider rounded-full">
+        <div class="h-full bg-primary rounded-full w-0 transition-all duration-500" id="quiz-bar"></div>
+      </div>
+    </div>
+    </div>
+    </div>
+
+    <!-- Question area takes remaining space, vertically centered -->
+    <div class="flex-1 flex items-center justify-center min-h-0 px-8 pb-8">
+    <div class="max-w-2xl w-full relative" id="quiz-stage" style="min-height: 280px">
+      <div class="absolute inset-0 flex flex-col justify-center" id="quiz-questions">
+      </div>
+    </div>
+    </div>
+  </div>
+</section>
+
+<script>
+  import { gsap } from 'gsap';
+  import { ScrollTrigger } from 'gsap/ScrollTrigger';
+  gsap.registerPlugin(ScrollTrigger);
+
+  const stage = document.getElementById('quiz-questions');
+  const bar = document.getElementById('quiz-bar');
+  const progressLabel = document.getElementById('quiz-progress-label');
+  const progressPct = document.getElementById('quiz-progress-pct');
+  const quizSection = document.getElementById('quiz');
+
+  const quizData = JSON.parse(document.getElementById('quiz-data-holder')?.dataset.questions || '[]');
+
+  window.quizAnswers = window.quizAnswers || {};
+
+  const debugMode = new URLSearchParams(window.location.search).has('debug');
+
+  if (!quizData.length) {
+  } else {
+    let quizCompleted = false;
+    let currentIdx = 0;
+
+    if (debugMode) {
+      quizData.forEach(q => {
+        if (q.type === 'multiple-choice') {
+          window.quizAnswers[q.id] = q.options?.[0] || '';
+        } else if (q.type === 'yes-no') {
+          window.quizAnswers[q.id] = 'no';
+        } else if (q.id === 'q3') {
+          window.quizAnswers[q.id] = [
+            'Ada Lovelace', 'Amelia Earhart', 'Angela Davis', 'Anne Frank', 'Aung San Kyi',
+            'Benazir Bhutto', 'Billie King', 'Catherine Great', 'Chien Wu', 'Cleopatra Philopator',
+            'Coco Chanel', 'Corazon Aquino', 'Dian Fossey', 'Dolores Huerta', 'Eleanor Roosevelt',
+            'Elizabeth Tudor', 'Elizabeth Windsor', 'Emilia Bazan', 'Emmeline Pankhurst', 'Florence Nightingale',
+            'Frida Kahlo', 'Gabriela Mistral', 'Germaine Greer', 'Gertrude Stein', 'Gloria Steinem',
+            'Golda Meir', 'Grace Hopper', 'Harriet Tubman', 'Hedy Lamarr', 'Helen Keller',
+            'Hypatia Alexandri', 'Indira Gandhi', 'Jane Austen', 'Jane Goodall', 'Joan Arc',
+            'Judith Butler', 'Kamala Harris', 'Katherine Johnson', 'Leymah Gbowee', 'Lise Meitner',
+            'Madam Walker', 'Madeleine Albright', 'Malala Yousafzai', 'Margaret Atwood', 'Margaret Mead',
+            'Margaret Thatcher', 'Maria Callas', 'Marie Curie', 'Mary Shelley', 'Mary Wollstonecraft',
+            'Maya Angelou', 'Michelle Obama', 'Muriel Spark', 'Nadine Gordimer', 'Natalie Portman',
+            'Nellie Bly', 'Oprah Winfrey', 'Rachel Carson', 'Rigoberta Menchu', 'Rosa Luxemburg',
+            'Rosa Parks', 'Rosalind Franklin', 'Ruth Ginsburg', 'Sacagawea Bird', 'Sally Ride',
+            "Sandra O'Connor", 'Sappho Lesbos', 'Simone Beauvoir', 'Simone Veil', 'Sojourner Truth',
+            'Sonia Sotomayor', 'Susan Anthony', 'Sylvia Plath', 'Tammy Duckworth', 'Tegla Loroupe',
+            'Toni Morrison', 'Ursula Leyen', 'Valentina Tereshkova', 'Vera Rubin', 'Victoria Woodhull',
+            'Virginia Woolf', 'Wangari Maathai', 'Wilma Mankiller', 'Winnie Mandela', 'Zaha Hadid',
+            'Aisha Tyler', 'Beyonce Carter', 'Cynthia Erivo', 'Dolly Parton', 'Ellen DeGeneres',
+            'Gabby Douglas', 'Hayley Williams', 'Issa Rae', 'Janet Jackson', 'Kristen Bell',
+            "Lupita Nyong'o", 'Mindy Kaling', 'Naomi Osaka', 'Olivia Colman', 'Priyanka Chopra',
+            'Queen Latifah', 'Rihanna Fenty', 'Serena Williams', 'Tracee Ross', 'Viola Davis',
+            'Whoopi Goldberg', 'Yara Shahidi', 'Zendaya Coleman', 'Aretha Franklin', 'Betty White',
+          ].join('\n');
+        } else {
+          window.quizAnswers[q.id] = 'debug answer';
+        }
+      });
+
+      quizCompleted = true;
+      quizSection.dataset.completed = 'true';
+      bar.style.width = '100%';
+      progressLabel.textContent = 'Complete';
+      progressPct.textContent = '100%';
+
+      const postQuiz = document.getElementById('post-quiz');
+      if (postQuiz) {
+        postQuiz.style.display = '';
+        ScrollTrigger.refresh();
+      }
+    }
+
+    function updateProgress() {
+      const pct = currentIdx / quizData.length;
+      bar.style.width = `${pct * 100}%`;
+      progressLabel.textContent = `Question ${currentIdx + 1} of ${quizData.length}`;
+      progressPct.textContent = `${Math.round(pct * 100)}%`;
+    }
+
+    function getFeedback(q, value) {
+      if (!q.feedback) return '';
+      if (q.feedback[value]) return q.feedback[value];
+      if (q.type === 'free-text') {
+        if (q.id == 'q3') {
+          if (/i'?m a nilot/i.test(value)) return q.feedback['gte100'];
+          const count = value.split("\n").length;
+          return count >= 100 ? q.feedback['gte100'] : q.feedback["lt100"];
+        }
+        if (q.id == 'q6' || q.id == 'q7' || q.id == 'name') {
+          return value.trim() ? q.feedback['anyText'] : q.feedback['noText'];
+        }
+        return value.length >= 50 ? (q.feedback['long'] || '') : (q.feedback['short'] || '');
+      }
+      return '';
+    }
+
+    function getRedirect(q, value) {
+      if (!q.redirect) return null;
+      if (q.redirect[value]) return q.redirect[value];
+      if (q.type === 'free-text') {
+        if (q.id == 'q3') {
+          if (/i'?m a nilot/i.test(value)) return q.redirect['gte100'] || null;
+          const count = value.split("\n").length;
+          return count >= 100 ? q.redirect['gte100'] : q.redirect["lt100"] || null;
+        }
+        if (q.id == 'q6' || q.id == 'q7' || q.id == 'name') {
+          return value.trim() ? q.redirect['anyText'] || null : q.redirect['noText'] || null;
+        }
+        return value.length >= 50 ? q.redirect['long'] || null : q.redirect['short'] || null;
+      }
+      return null;
+    }
+
+    function buildQuestionHTML(q, idx) {
+      const display = idx === 0 ? '' : 'display:none';
+
+      let optionsHTML = '';
+      if (q.type === 'multiple-choice') {
+        optionsHTML = (q.options || []).map(opt => `
+          <button class="quiz-option w-full text-left p-4 rounded-xl border-2 border-divider hover:border-primary hover:bg-bg-alt transition-all duration-200 mb-3"
+                  data-value="${opt}">
+            <span class="text-lg">${opt}</span>
+          </button>
+        `).join('');
+      } else if (q.type === 'free-text') {
+        optionsHTML = `
+          <div class="relative">
+            <textarea class="quiz-free-input w-full p-4 rounded-xl border-2 border-divider bg-bg-alt text-text placeholder-text-muted resize-none h-24 sm:h-32 focus:border-primary focus:outline-none transition-colors break-words"
+                      placeholder="${q.placeholder || 'Type your answer...'}"></textarea>
+            <button class="quiz-submit-free mt-3 px-6 py-2 bg-primary text-white rounded-lg font-semibold hover:opacity-90 transition-opacity">
+              Submit
+            </button>
+          </div>
+        `;
+      } else if (q.type === 'yes-no') {
+        optionsHTML = `
+          <div class="flex gap-4">
+            <button class="quiz-option flex-1 p-6 rounded-xl border-2 border-divider hover:border-accent hover:bg-bg-alt transition-all duration-200 text-center"
+                    data-value="yes">
+              <span class="text-3xl">&#10003;</span>
+              <span class="block mt-2 text-lg font-semibold">Yes</span>
+            </button>
+            <button class="quiz-option flex-1 p-6 rounded-xl border-2 border-divider hover:border-primary hover:bg-bg-alt transition-all duration-200 text-center"
+                    data-value="no">
+              <span class="text-3xl">&#10007;</span>
+              <span class="block mt-2 text-lg font-semibold">No</span>
+            </button>
+          </div>
+        `;
+      }
+
+      return `
+        <div class="quiz-question absolute inset-0 flex flex-col justify-center break-words" data-question-idx="${idx}" style="${display}">
+          <h3 class="text-2xl sm:text-3xl md:text-4xl font-display font-bold mb-2 quiz-q-title">${q.question}</h3>
+          ${q.subtitle ? `<p class="text-text-muted mb-6 text-sm sm:text-lg quiz-q-subtitle">${q.subtitle}</p>` : '<div class="mb-6"></div>'}
+
+          <div class="quiz-options-wrap">${optionsHTML}</div>
+
+          <div class="quiz-feedback-wrap hidden mt-4">
+            <p class="quiz-feedback-text text-base sm:text-lg leading-relaxed"></p>
+            <div class="mt-4">
+              <button class="quiz-next-btn px-8 py-3 bg-text text-bg font-semibold rounded-xl hover:opacity-90 transition-opacity">
+                Next
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    if (!debugMode) {
+      stage.innerHTML = quizData.map((q, i) => buildQuestionHTML(q, i)).join('');
+
+    function handleAnswer(questionEl, value, q) {
+      window.quizAnswers[q.id] = value;
+
+      const feedbackWrap = questionEl.querySelector('.quiz-feedback-wrap');
+      const feedbackText = questionEl.querySelector('.quiz-feedback-text');
+      const nextBtn = questionEl.querySelector('.quiz-next-btn');
+      const optionsWrap = questionEl.querySelector('.quiz-options-wrap');
+
+      questionEl.querySelectorAll('.quiz-option, .quiz-submit-free').forEach(b => {
+        b.disabled = true;
+        b.style.pointerEvents = 'none';
+      });
+
+      gsap.to(optionsWrap, { opacity: 0.3, duration: 0.2 });
+
+      const fb = getFeedback(q, value);
+      feedbackText.textContent = fb;
+      feedbackWrap.classList.remove('hidden');
+      gsap.fromTo(feedbackWrap, { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.3 });
+
+      const redirectUrl = getRedirect(q, value);
+      nextBtn.textContent = q.nextLabel || 'Next';
+      if (redirectUrl) {
+        nextBtn.dataset.redirect = redirectUrl;
+      } else {
+        delete nextBtn.dataset.redirect;
+      }
+    }
+
+    function advanceQuestion() {
+      if (currentIdx >= quizData.length - 1) {
+        completeQuiz();
+        return;
+      }
+
+      const oldQ = stage.querySelector(`[data-question-idx="${currentIdx}"]`);
+      currentIdx += 1;
+      const newQ = stage.querySelector(`[data-question-idx="${currentIdx}"]`);
+      if (!newQ) { completeQuiz(); return; }
+
+      updateProgress();
+
+      if (oldQ) {
+        gsap.to(oldQ, {
+          opacity: 0, x: -30, duration: 0.25,
+          onComplete: () => {
+            oldQ.style.display = 'none';
+            newQ.style.display = '';
+            gsap.set(newQ, { opacity: 0, x: 30 });
+            gsap.to(newQ, { opacity: 1, x: 0, duration: 0.3, ease: 'power2.out' });
+          },
+        });
+      } else {
+        newQ.style.display = '';
+        gsap.fromTo(newQ, { opacity: 0, x: 30 }, { opacity: 1, x: 0, duration: 0.3, ease: 'power2.out' });
+      }
+    }
+
+    function completeQuiz() {
+      quizCompleted = true;
+      quizSection.dataset.completed = 'true';
+      bar.style.width = '100%';
+      progressLabel.textContent = 'Complete';
+      progressPct.textContent = '100%';
+
+      const postQuiz = document.getElementById('post-quiz');
+      if (postQuiz) {
+        postQuiz.style.display = '';
+        ScrollTrigger.refresh();
+        setTimeout(() => {
+          document.getElementById('outcome')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 800);
+      }
+    }
+
+    // --- Event delegation ---
+
+    stage.addEventListener('click', (e) => {
+      // Option click (multiple choice / yes-no)
+      const btn = e.target.closest('.quiz-option');
+      if (btn && !btn.disabled) {
+        const questionEl = btn.closest('.quiz-question');
+        const value = btn.dataset.value;
+        if (!value) return;
+
+        btn.classList.add('border-primary', 'bg-primary/5');
+
+        const qid = quizData.find((_, i) =>
+          questionEl.dataset.questionIdx === String(i)
+        );
+        const q = quizData[currentIdx];
+
+        setTimeout(() => handleAnswer(questionEl, value, q), 200);
+        return;
+      }
+
+      // Free text submit
+      const submitBtn = e.target.closest('.quiz-submit-free');
+      if (submitBtn) {
+        const questionEl = submitBtn.closest('.quiz-question');
+        const textarea = questionEl.querySelector('.quiz-free-input');
+        const value = textarea?.value?.trim() || '';
+
+        handleAnswer(questionEl, value, quizData[currentIdx]);
+        return;
+      }
+
+      // Next button
+      const nextBtn = e.target.closest('.quiz-next-btn');
+      if (nextBtn) {
+        if (nextBtn.dataset.redirect) {
+          window.open(nextBtn.dataset.redirect, '_blank');
+        } else {
+          advanceQuestion();
+        }
+        return;
+      }
+    });
+    }
+  }
+
+</script>
+
+<div id="quiz-data-holder" data-questions={JSON.stringify(questions)} class="hidden"></div>

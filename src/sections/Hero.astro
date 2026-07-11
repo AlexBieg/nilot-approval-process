@@ -1,0 +1,115 @@
+---
+import ScrollPin from '../components/ScrollPin.astro';
+---
+
+<ScrollPin id="hero" height="200vh">
+  <div class="text-center px-6">
+    <p class="text-sm uppercase tracking-[0.3em] text-text-muted font-mono mb-6 opacity-0" data-anim="eyebrow">
+      A Visual Journey
+    </p>
+    <h1 class="text-5xl sm:text-6xl md:text-8xl font-bold font-display leading-tight sm:leading-none mb-8 relative inline-block" id="hero-title">
+      So...<br />you want to date a Nilot?
+    </h1>
+    <p class="text-lg sm:text-xl md:text-2xl text-text-muted max-w-lg mx-auto opacity-0" data-anim="subtitle">
+      Thank you for attending the offical Nilot Pal approval and verification site. We endevour to answer any questions you may have and ensure you are a good fit for our Nilots.
+    </p>
+    <div class="mt-16 opacity-0" data-anim="arrow">
+      <div class="w-6 h-10 border-2 border-text-muted rounded-full mx-auto flex justify-center">
+        <span class="w-1 h-2 bg-text-muted rounded-full mt-2 animate-bounce"></span>
+      </div>
+    </div>
+  </div>
+</ScrollPin>
+
+<script>
+  import { gsap } from 'gsap';
+  import { ScrollTrigger } from 'gsap/ScrollTrigger';
+  gsap.registerPlugin(ScrollTrigger);
+
+  const title = document.getElementById('hero-title');
+  const lines = title.innerHTML.split(/<br[^>]*\/?>/i);
+
+  const wrapped = lines.map((line, i) => {
+    const letters = line.split('').map(ch =>
+      `<span class="hero-letter" data-line="${i}" style="opacity:0">${ch}</span>`
+    );
+    return `<span class="block">${letters.join('')}</span>`;
+  });
+
+  title.innerHTML = wrapped.join('<br>');
+
+  // Animate letter-by-letter, with a pause between lines
+  const line0Letters = title.querySelectorAll('[data-line="0"]');
+  const line1Letters = title.querySelectorAll('[data-line="1"]');
+
+  const letterDefaults = {
+    duration: 0.02,
+    stagger: { each: 0.045, from: 'start' },
+  };
+
+  const enterTl = gsap.timeline();
+
+  enterTl.to(line0Letters,
+    { opacity: 1, ...letterDefaults },
+  )
+  .to(line1Letters,
+    { opacity: 1, ...letterDefaults },
+    '+=0.2'
+  )
+  .to('[data-anim="eyebrow"]', { opacity: 1, y: 0, duration: 0.4 })
+  .call(drawNilotUnderline);
+
+  function drawNilotUnderline() {
+    const allLetters = Array.from(title.querySelectorAll('[data-line="1"]'));
+    const text = allLetters.map(s => s.textContent).join('');
+    const idx = text.lastIndexOf('Nilot');
+    if (idx === -1) return;
+
+    const nilotSpans = allLetters.slice(idx, idx + 5);
+    const titleRect = title.getBoundingClientRect();
+    const first = nilotSpans[0].getBoundingClientRect();
+    const last = nilotSpans[nilotSpans.length - 1].getBoundingClientRect();
+
+    const w = last.right - first.left;
+    const x = first.left - titleRect.left;
+    const y = first.bottom - titleRect.top - 10;
+
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', `0 0 ${w} 20`);
+    svg.setAttribute('width', w);
+    svg.setAttribute('height', 20);
+    svg.style.cssText = `position:absolute;left:${x}px;top:${y}px;pointer-events:none;overflow:visible;`;
+
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    const d = `M 4 12 Q ${w * 0.15} 4 ${w * 0.35} 10 T ${w * 0.65} 8 T ${w - 4} 6`;
+    path.setAttribute('d', d);
+    path.setAttribute('stroke', 'var(--color-primary)');
+    path.setAttribute('stroke-width', '10');
+    path.setAttribute('fill', 'none');
+    path.setAttribute('stroke-linecap', 'round');
+    path.setAttribute('stroke-linejoin', 'round');
+
+    svg.appendChild(path);
+    title.appendChild(svg);
+
+    const len = path.getTotalLength();
+    gsap.fromTo(path,
+      { strokeDasharray: len, strokeDashoffset: len },
+      { strokeDashoffset: 0, duration: 0.7, ease: 'power2.out' }
+    );
+  }
+
+  // Phase 2: scroll-driven subtitle and arrow
+  const scrollTl = gsap.timeline({
+    scrollTrigger: {
+      trigger: '#hero',
+      start: 'top top',
+      end: 'bottom bottom',
+      scrub: 1,
+    },
+  });
+
+  scrollTl
+    .to('[data-anim="subtitle"]', { opacity: 1, duration: 0.5 })
+    .to('[data-anim="arrow"]', { opacity: 1, duration: 0.3 });
+</script>

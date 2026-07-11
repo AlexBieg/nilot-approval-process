@@ -1,0 +1,22 @@
+<div id="footer" class="h-screen flex items-center justify-center bg-bg-alt text-center px-8">
+  <div class="fade-on-enter opacity-0 translate-y-8">
+    <p class="text-2xl sm:text-3xl md:text-4xl font-display font-bold">Built for clarity. Designed for flow.</p>
+    <p class="text-text-muted mt-4 text-lg">Excepteur sint occaecat cupidatat non proident, sunt in culpa.</p>
+    <p class="text-text-muted mt-12 text-sm font-mono">&copy; 2026</p>
+  </div>
+</div>
+
+<script>
+  import { gsap } from 'gsap';
+  import { ScrollTrigger } from 'gsap/ScrollTrigger';
+  gsap.registerPlugin(ScrollTrigger);
+
+  ScrollTrigger.create({
+    trigger: '.fade-on-enter',
+    start: 'top bottom-=100',
+    toggleActions: 'play none none none',
+    onEnter: () => {
+      gsap.to('.fade-on-enter', { opacity: 1, y: 0, duration: 0.8, ease: 'power2.out' });
+    },
+  });
+</script>

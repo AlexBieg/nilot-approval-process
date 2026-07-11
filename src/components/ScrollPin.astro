@@ -1,0 +1,9 @@
+---
+const { id, height = '300vh' } = Astro.props;
+---
+
+<section {id} style={`height: ${height}`} class="relative">
+  <div class="sticky top-0 h-screen flex items-center justify-center overflow-x-hidden">
+    <slot />
+  </div>
+</section>

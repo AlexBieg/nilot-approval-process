@@ -1,0 +1,76 @@
+---
+import ScrollPin from '../components/ScrollPin.astro';
+
+const steps = [
+  { label: 'Submit', color: 'primary', desc: 'Complete this evaluation' },
+  { label: 'Review', color: 'secondary', desc: 'Your application will be reviewed by a panel of experts' },
+  { label: 'Revise', color: 'accent', desc: 'You may be asked to expand on some of your answers' },
+  { label: 'Approve', color: 'primary', desc: 'If you are a good fit you will be approved for further contact' },
+];
+---
+
+<ScrollPin id="process" height="400vh">
+  <div class="max-w-5xl w-full px-8">
+    <h2 class="text-4xl sm:text-5xl md:text-7xl font-display font-bold text-center mb-20 opacity-0" data-anim="headline">
+      How it works
+    </h2>
+
+    <!-- Progress bar -->
+    <div class="w-full h-1 bg-divider rounded-full mb-16">
+      <div class="h-full bg-primary rounded-full w-0" data-anim="progress"></div>
+    </div>
+
+    <!-- Steps -->
+    <div class="space-y-8">
+      {
+        steps.map((step, i) => (
+          <div
+            class="flex items-center gap-4 sm:gap-6 p-4 sm:p-6 rounded-2xl transition-colors duration-500 opacity-0"
+            data-anim={`step-${i}`}
+          >
+            <div class="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-bg-alt flex items-center justify-center text-xl sm:text-2xl font-display font-bold text-text-muted shrink-0"
+                 data-anim={`num-${i}`}>
+              {i + 1}
+            </div>
+            <div>
+              <h3 class="text-2xl sm:text-3xl font-display font-bold">{step.label}</h3>
+              <p class="text-text-muted mt-1 text-sm sm:text-base">{step.desc}</p>
+            </div>
+          </div>
+        ))
+      }
+    </div>
+  </div>
+</ScrollPin>
+
+<script>
+  import { gsap } from 'gsap';
+  import { ScrollTrigger } from 'gsap/ScrollTrigger';
+  gsap.registerPlugin(ScrollTrigger);
+
+  const tl = gsap.timeline({
+    scrollTrigger: {
+      trigger: '#process',
+      start: 'top top',
+      end: 'bottom bottom',
+      scrub: 1,
+    },
+  });
+
+  const colors = ['var(--color-primary)', 'var(--color-secondary)', 'var(--color-accent)', 'var(--color-primary)'];
+
+  tl.to('[data-anim="headline"]', { opacity: 1, duration: 0.3 });
+
+  for (let i = 0; i < 4; i++) {
+    tl.to(`[data-anim="step-${i}"]`, { opacity: 1, y: 0, duration: 0.3 }, `-=0.05`);
+    tl.to(`[data-anim="num-${i}"]`, {
+      backgroundColor: colors[i],
+      color: '#ffffff',
+      duration: 0.25,
+    }, `-=0.25`);
+    tl.to('[data-anim="progress"]', {
+      width: `${(i + 1) * 25}%`,
+      duration: 0.25,
+    });
+  }
+</script>

@@ -1,0 +1,15 @@
+/* ===== Pastel Palette ===== */
+/* To switch palettes, replace this entire file.
+   All components reference these token names only. */
+:root {
+  --color-bg:         #fdf6f0;
+  --color-bg-alt:     #f7ede2;
+  --color-text:       #3d2c2e;
+  --color-text-muted: #8b7b7a;
+  --color-primary:    #e8b4b8;
+  --color-secondary:  #a8d8ea;
+  --color-accent:     #c3e0a8;
+  --color-card:       #ffffff;
+  --color-card-alt:   #f5e6d8;
+  --color-divider:    rgba(61, 44, 46, 0.08);
+}
