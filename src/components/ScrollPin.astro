@@ -1,9 +1,9 @@
 ---
-const { id, height = '300vh' } = Astro.props;
+const { id, height = '100vh' } = Astro.props;
 ---
 
-<section {id} style={`height: ${height}`} class="relative">
-  <div class="sticky top-0 h-screen flex items-center justify-center overflow-x-hidden">
+<section {id} style={`height: ${height}`} class="relative snap-section">
+  <div class="sticky top-0 h-screen flex items-center justify-center overflow-y-auto overflow-x-hidden" style="align-items: safe center">
     <slot />
   </div>
 </section>

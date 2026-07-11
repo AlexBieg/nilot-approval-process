@@ -2,7 +2,7 @@
 import ScrollPin from '../components/ScrollPin.astro';
 ---
 
-<ScrollPin id="problem" height="300vh">
+<ScrollPin id="problem">
   <div class="max-w-4xl w-full px-8">
     <h2 class="text-4xl sm:text-5xl md:text-7xl font-display font-bold opacity-0" data-anim="headline">
       Why do we have <br /> this process?
@@ -53,44 +53,27 @@ import ScrollPin from '../components/ScrollPin.astro';
 
   let highlightSvg = null;
 
-  // Scrub timeline for headline only
   const tl = gsap.timeline({
     scrollTrigger: {
       trigger: '#problem',
       start: 'top top',
       end: 'bottom bottom',
-      scrub: 1,
+      toggleActions: 'play none none reverse',
     },
-  });
-
-  tl.to('[data-anim="headline"]', { opacity: 1, duration: 0.3 });
-
-  // Auto-play typewriter + cards + body2, with reverse support
-  const typewriterTl = gsap.timeline({
-    paused: true,
     onReverseComplete: removeTrashHighlight,
   });
 
-  typewriterTl.to('#body1-text .problem-letter', {
-    opacity: 1,
-    duration: 0.02,
-    stagger: { each: 0.035, from: 'start' },
-  })
-  .call(drawTrashHighlight)
-  .to({}, { duration: 0.2 })
-  .to('[data-anim="card1"]', { opacity: 1, scale: 1, duration: 0.4 }, '-=0.1')
-  .to('[data-anim="card2"]', { opacity: 1, scale: 1, duration: 0.4 })
-  .to('[data-anim="body2"]', { opacity: 1, duration: 0.4 });
-
-  ScrollTrigger.create({
-    trigger: '#problem',
-    start: 'top+=25% top',
-    toggleActions: 'play none none reverse',
-    onEnter: () => typewriterTl.play(),
-    onLeaveBack: () => {
-      typewriterTl.reverse();
-    },
-  });
+  tl.to('[data-anim="headline"]', { opacity: 1, duration: 0.3 })
+    .to('#body1-text .problem-letter', {
+      opacity: 1,
+      duration: 0.02,
+      stagger: { each: 0.035, from: 'start' },
+    })
+    .call(drawTrashHighlight)
+    .to({}, { duration: 0.2 })
+    .to('[data-anim="card1"]', { opacity: 1, scale: 1, duration: 0.4 }, '-=0.1')
+    .to('[data-anim="card2"]', { opacity: 1, scale: 1, duration: 0.4 })
+    .to('[data-anim="body2"]', { opacity: 1, duration: 0.4 });
 
   function drawTrashHighlight() {
     if (body1.dataset.drawn === 'true') return;

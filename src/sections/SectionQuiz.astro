@@ -116,10 +116,10 @@ const questions: Question[] = [
 ];
 ---
 
-<section id="quiz" style="height: 350vh" class="relative" data-completed="false">
-  <div class="sticky top-0 h-screen flex flex-col overflow-x-hidden">
+<section id="quiz" style="height: 100vh" class="relative snap-section" data-completed="false">
+  <div class="sticky top-0 h-screen flex flex-col overflow-y-auto overflow-x-hidden">
     <!-- Progress bar -->
-    <div class="pt-8 px-8">
+    <div class="pt-8 px-8 shrink-0">
     <div class="max-w-2xl mx-auto">
     <div class="mb-8">
       <div class="flex justify-between text-sm text-text-muted font-mono mb-2">
@@ -134,7 +134,7 @@ const questions: Question[] = [
     </div>
 
     <!-- Question area takes remaining space, vertically centered -->
-    <div class="flex-1 flex items-center justify-center min-h-0 px-8 pb-8">
+    <div class="flex-1 flex items-center justify-center min-h-0 px-8 pb-8 overflow-y-auto" style="align-items: safe center">
     <div class="max-w-2xl w-full relative" id="quiz-stage" style="min-height: 280px">
       <div class="absolute inset-0 flex flex-col justify-center" id="quiz-questions">
       </div>
@@ -211,6 +211,9 @@ const questions: Question[] = [
       if (postQuiz) {
         postQuiz.style.display = '';
         ScrollTrigger.refresh();
+        setTimeout(() => {
+          if (window.__renderOutcomeCert) window.__renderOutcomeCert();
+        }, 100);
       }
     }
 
@@ -384,6 +387,7 @@ const questions: Question[] = [
       if (postQuiz) {
         postQuiz.style.display = '';
         ScrollTrigger.refresh();
+        if (window.__renderOutcomeCert) window.__renderOutcomeCert();
         setTimeout(() => {
           document.getElementById('outcome')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }, 800);

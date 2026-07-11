@@ -2,7 +2,7 @@
 import ScrollPin from '../components/ScrollPin.astro';
 ---
 
-<ScrollPin id="hero" height="200vh">
+<ScrollPin id="hero">
   <div class="text-center px-6">
     <p class="text-sm uppercase tracking-[0.3em] text-text-muted font-mono mb-6 opacity-0" data-anim="eyebrow">
       A Visual Journey
@@ -82,7 +82,8 @@ import ScrollPin from '../components/ScrollPin.astro';
     '+=0.2'
   )
   .to('[data-anim="eyebrow"]', { opacity: 1, y: 0, duration: 0.4 })
-  .call(drawNilotUnderline);
+  .call(drawNilotUnderline)
+  .call(() => scrollTl.play(), null, '+=0.3');
 
   function drawNilotUnderline() {
     const allLetters = Array.from(title.querySelectorAll('[data-line="1"]'));
@@ -124,13 +125,12 @@ import ScrollPin from '../components/ScrollPin.astro';
     );
   }
 
-  // Phase 2: scroll-driven subtitle and arrow
   const scrollTl = gsap.timeline({
     scrollTrigger: {
       trigger: '#hero',
       start: 'top top',
       end: 'bottom bottom',
-      scrub: 1,
+      toggleActions: 'play none none reverse',
     },
   });
 
