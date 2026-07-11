@@ -305,11 +305,15 @@ const questions: Question[] = [
 
           <div class="quiz-feedback-wrap hidden mt-4">
             <p class="quiz-feedback-text text-base sm:text-lg leading-relaxed"></p>
-            <div class="mt-4">
+            <div class="mt-4 flex flex-wrap items-center gap-3">
               <button class="quiz-next-btn px-8 py-3 bg-text text-bg font-semibold rounded-xl hover:opacity-90 transition-opacity">
                 Next
               </button>
+              <button class="quiz-revise-btn hidden px-8 py-3 border-2 border-primary text-primary font-semibold rounded-xl hover:bg-primary hover:text-white transition-colors">
+                Revise Answer
+              </button>
             </div>
+            <p class="quiz-redirect-info hidden mt-3 text-sm text-text-muted"></p>
           </div>
         </div>
       `;
@@ -339,11 +343,24 @@ const questions: Question[] = [
       gsap.fromTo(feedbackWrap, { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.3 });
 
       const redirectUrl = getRedirect(q, value);
-      nextBtn.textContent = q.nextLabel || 'Next';
+      const infoText = questionEl.querySelector('.quiz-redirect-info');
+      const reviseBtn = questionEl.querySelector('.quiz-revise-btn');
+
       if (redirectUrl) {
         nextBtn.dataset.redirect = redirectUrl;
+        nextBtn.classList.remove('bg-text', 'text-bg');
+        nextBtn.classList.add('bg-primary', 'text-white');
+        nextBtn.textContent = 'Review Material';
+        infoText.classList.remove('hidden');
+        infoText.textContent = 'Please review these learning materials before revising your answer';
+        reviseBtn.classList.add('hidden');
       } else {
         delete nextBtn.dataset.redirect;
+        nextBtn.classList.remove('bg-primary', 'text-white');
+        nextBtn.classList.add('bg-text', 'text-bg');
+        nextBtn.textContent = q.nextLabel || 'Next';
+        infoText.classList.add('hidden');
+        reviseBtn.classList.add('hidden');
       }
     }
 
@@ -426,14 +443,59 @@ const questions: Question[] = [
         return;
       }
 
-      // Next button
+      // Next / Review Material button
       const nextBtn = e.target.closest('.quiz-next-btn');
       if (nextBtn) {
         if (nextBtn.dataset.redirect) {
           window.open(nextBtn.dataset.redirect, '_blank');
+          const questionEl = nextBtn.closest('.quiz-question');
+          const infoText = questionEl.querySelector('.quiz-redirect-info');
+          const reviseBtn = questionEl.querySelector('.quiz-revise-btn');
+          nextBtn.classList.add('hidden');
+          infoText.classList.add('hidden');
+          reviseBtn.classList.remove('hidden');
+          delete nextBtn.dataset.redirect;
         } else {
           advanceQuestion();
         }
+        return;
+      }
+
+      // Revise Answer button
+      const reviseBtn = e.target.closest('.quiz-revise-btn');
+      if (reviseBtn) {
+        const questionEl = reviseBtn.closest('.quiz-question');
+        const optionsWrap = questionEl.querySelector('.quiz-options-wrap');
+        const feedbackWrap = questionEl.querySelector('.quiz-feedback-wrap');
+        const nextBtn = questionEl.querySelector('.quiz-next-btn');
+        const infoText = questionEl.querySelector('.quiz-redirect-info');
+
+        delete window.quizAnswers[quizData[currentIdx].id];
+
+        questionEl.querySelectorAll('.quiz-option, .quiz-submit-free').forEach(b => {
+          b.disabled = false;
+          b.style.pointerEvents = '';
+        });
+        questionEl.querySelectorAll('.quiz-option').forEach(b => {
+          b.classList.remove('border-primary', 'bg-primary/5');
+        });
+        const textarea = questionEl.querySelector('.quiz-free-input');
+        if (textarea) textarea.value = '';
+
+        gsap.to(optionsWrap, { opacity: 1, duration: 0.2 });
+
+        gsap.to(feedbackWrap, { opacity: 0, y: 10, duration: 0.2, onComplete: () => {
+          feedbackWrap.classList.add('hidden');
+        }});
+
+        nextBtn.classList.remove('hidden', 'bg-primary', 'text-white');
+        nextBtn.classList.add('bg-text', 'text-bg');
+        nextBtn.textContent = quizData[currentIdx].nextLabel || 'Next';
+        delete nextBtn.dataset.redirect;
+
+        reviseBtn.classList.add('hidden');
+        infoText.classList.add('hidden');
+
         return;
       }
     });
