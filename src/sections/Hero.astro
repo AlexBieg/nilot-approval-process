@@ -282,14 +282,20 @@ import ScrollPin from '../components/ScrollPin.astro';
     for (const line of text.split('\n')) {
       const m = line.match(/^([^:]+):(.*)$/);
       if (m && knownKeys.includes(m[1])) {
-        if (currentKey) answers[currentKey] = currentValue.replace(/\n$/, '');
+        if (currentKey) {
+          if (!answers[currentKey]) answers[currentKey] = [];
+          answers[currentKey].push(currentValue.replace(/\n$/, ''));
+        }
         currentKey = m[1];
         currentValue = m[2];
       } else if (currentKey) {
         currentValue += '\n' + line;
       }
     }
-    if (currentKey) answers[currentKey] = currentValue.replace(/\n$/, '');
+    if (currentKey) {
+      if (!answers[currentKey]) answers[currentKey] = [];
+      answers[currentKey].push(currentValue.replace(/\n$/, ''));
+    }
     return answers;
   }
 
@@ -329,13 +335,29 @@ import ScrollPin from '../components/ScrollPin.astro';
       return value || '(no answer)';
     }
 
+    function formatAnswerDisplay(key, values) {
+      if (!values || values.length === 0) {
+        return formatAnswer(key, '') || '(no answer)';
+      }
+      if (values.length === 1) {
+        return formatAnswer(key, values[0]);
+      }
+      return values.map((v, i) => {
+        const isLast = i === values.length - 1;
+        return `<div class="${isLast ? 'font-semibold' : 'text-text-muted'}">
+          <span class="text-xs font-mono text-text-muted">Attempt ${i + 1}${isLast ? ' (final)' : ''}: </span>
+          <span class="${isLast ? '' : 'line-through'}">${formatAnswer(key, v)}</span>
+        </div>`;
+      }).join('');
+    }
+
     let html = '';
     for (const [key, label] of Object.entries(questionLabels)) {
-      const value = answers[key] ?? '';
+      const values = answers[key] || [];
       html += `
         <div class="border-b border-divider pb-3">
           <p class="text-xs uppercase tracking-wider text-text-muted font-mono mb-1">${label}</p>
-          <div class="text-text">${formatAnswer(key, value)}</div>
+          <div class="text-text">${formatAnswerDisplay(key, values)}</div>
         </div>
       `;
     }

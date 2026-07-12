@@ -72,19 +72,28 @@ import ScrollPin from '../components/ScrollPin.astro';
     const a = window.quizAnswers;
     const q1opts = ['Yes', 'No', "I don't recall"];
     const q5opts = ['My one pair of sneakers', 'Something context appropriate', "Those toe shoes", "A pair I recently thrifted"];
-    const fields = [
-      { k: 'n', v: a.name },
-      { k: '1', v: q1opts.indexOf(a.q1) },
-      { k: '2', v: a.q2 === 'yes' ? 'y' : 'n' },
-      { k: '3', v: a.q3 },
-      { k: '4', v: a.q4 === 'yes' ? 'y' : 'n' },
-      { k: '5', v: q5opts.indexOf(a.q5) },
-      { k: '6', v: a.q6 },
-      { k: '7', v: a.q7 },
+
+    function last(arr) { return Array.isArray(arr) ? arr[arr.length - 1] : arr; }
+    function toArray(val) { return Array.isArray(val) ? val : (val != null ? [val] : []); }
+
+    const fieldDefs = [
+      { k: 'n', vals: toArray(a.name) },
+      { k: '1', vals: toArray(a.q1).map(v => q1opts.indexOf(v)) },
+      { k: '2', vals: toArray(a.q2).map(v => v === 'yes' ? 'y' : 'n') },
+      { k: '3', vals: toArray(a.q3) },
+      { k: '4', vals: toArray(a.q4).map(v => v === 'yes' ? 'y' : 'n') },
+      { k: '5', vals: toArray(a.q5).map(v => q5opts.indexOf(v)) },
+      { k: '6', vals: toArray(a.q6) },
+      { k: '7', vals: toArray(a.q7) },
     ];
-    return fields.map(f =>
-      f.k + ':' + (f.v == null || f.v === -1 ? '' : String(f.v))
-    ).join('\n');
+
+    const lines = [];
+    for (const f of fieldDefs) {
+      for (const v of f.vals) {
+        lines.push(f.k + ':' + (v == null || v === -1 ? '' : String(v)));
+      }
+    }
+    return lines.join('\n');
   }
 
   function binaryToBase64(bytes) {
@@ -134,7 +143,8 @@ import ScrollPin from '../components/ScrollPin.astro';
     if (!canvas || !wingsTemplate) return resolve();
     const ctx = canvas.getContext('2d');
     const colors = getColors();
-    const name = (window.quizAnswers?.name || '').trim() || 'Anonymous';
+    const nameArr = Array.isArray(window.quizAnswers?.name) ? window.quizAnswers.name : [window.quizAnswers?.name];
+    const name = (nameArr[nameArr.length - 1] || '').trim() || 'Anonymous';
     const payload = buildCompactPayload();
 
     const wingW = w * 0.65;
@@ -329,7 +339,8 @@ import ScrollPin from '../components/ScrollPin.astro';
     saveBtn.addEventListener('click', async () => {
       const canvas = document.createElement('canvas');
       await renderCertificate(canvas, 1400);
-      const name = (window.quizAnswers?.name || '').trim() || 'Anonymous';
+      const nameArr = Array.isArray(window.quizAnswers?.name) ? window.quizAnswers.name : [window.quizAnswers?.name];
+      const name = (nameArr[nameArr.length - 1] || '').trim() || 'Anonymous';
       canvas.toBlob(blob => {
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);

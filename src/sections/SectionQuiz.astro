@@ -168,11 +168,11 @@ const questions: Question[] = [
     if (debugMode) {
       quizData.forEach(q => {
         if (q.type === 'multiple-choice') {
-          window.quizAnswers[q.id] = q.options?.[0] || '';
+          window.quizAnswers[q.id] = [q.options?.[0] || ''];
         } else if (q.type === 'yes-no') {
-          window.quizAnswers[q.id] = 'no';
+          window.quizAnswers[q.id] = ['no'];
         } else if (q.id === 'q3') {
-          window.quizAnswers[q.id] = [
+          window.quizAnswers[q.id] = [[
             'Ada Lovelace', 'Amelia Earhart', 'Angela Davis', 'Anne Frank', 'Aung San Kyi',
             'Benazir Bhutto', 'Billie King', 'Catherine Great', 'Chien Wu', 'Cleopatra Philopator',
             'Coco Chanel', 'Corazon Aquino', 'Dian Fossey', 'Dolores Huerta', 'Eleanor Roosevelt',
@@ -195,9 +195,9 @@ const questions: Question[] = [
             "Lupita Nyong'o", 'Mindy Kaling', 'Naomi Osaka', 'Olivia Colman', 'Priyanka Chopra',
             'Queen Latifah', 'Rihanna Fenty', 'Serena Williams', 'Tracee Ross', 'Viola Davis',
             'Whoopi Goldberg', 'Yara Shahidi', 'Zendaya Coleman', 'Aretha Franklin', 'Betty White',
-          ].join('\n');
+          ].join('\n')];
         } else {
-          window.quizAnswers[q.id] = 'debug answer';
+          window.quizAnswers[q.id] = ['debug answer'];
         }
       });
 
@@ -323,7 +323,8 @@ const questions: Question[] = [
       stage.innerHTML = quizData.map((q, i) => buildQuestionHTML(q, i)).join('');
 
     function handleAnswer(questionEl, value, q) {
-      window.quizAnswers[q.id] = value;
+      if (!window.quizAnswers[q.id]) window.quizAnswers[q.id] = [];
+      window.quizAnswers[q.id].push(value);
 
       const feedbackWrap = questionEl.querySelector('.quiz-feedback-wrap');
       const feedbackText = questionEl.querySelector('.quiz-feedback-text');
@@ -360,7 +361,7 @@ const questions: Question[] = [
         nextBtn.classList.add('bg-text', 'text-bg');
         nextBtn.textContent = q.nextLabel || 'Next';
         infoText.classList.add('hidden');
-        reviseBtn.classList.add('hidden');
+        reviseBtn.classList.remove('hidden');
       }
     }
 
@@ -454,7 +455,6 @@ const questions: Question[] = [
           const questionEl = nextBtn.closest('.quiz-question');
           const infoText = questionEl.querySelector('.quiz-redirect-info');
           const reviseBtn = questionEl.querySelector('.quiz-revise-btn');
-          nextBtn.classList.add('hidden');
           infoText.classList.add('hidden');
           reviseBtn.classList.remove('hidden');
           delete nextBtn.dataset.redirect;
@@ -473,8 +473,6 @@ const questions: Question[] = [
         const nextBtn = questionEl.querySelector('.quiz-next-btn');
         const infoText = questionEl.querySelector('.quiz-redirect-info');
 
-        delete window.quizAnswers[quizData[currentIdx].id];
-
         questionEl.querySelectorAll('.quiz-option, .quiz-submit-free').forEach(b => {
           b.disabled = false;
           b.style.pointerEvents = '';
@@ -483,7 +481,10 @@ const questions: Question[] = [
           b.classList.remove('border-primary', 'bg-primary/5');
         });
         const textarea = questionEl.querySelector('.quiz-free-input');
-        if (textarea) textarea.value = '';
+        if (textarea) {
+          const prev = window.quizAnswers[quizData[currentIdx].id];
+          textarea.value = (Array.isArray(prev) ? prev[prev.length - 1] : prev) || '';
+        }
 
         gsap.to(optionsWrap, { opacity: 1, duration: 0.2 });
 
