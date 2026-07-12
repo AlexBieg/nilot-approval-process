@@ -504,19 +504,33 @@ const questions: Question[] = [
       }
     });
 
+    function scrollTextareaIntoView(textarea) {
+      const scrollContainer = textarea.closest('.overflow-y-auto');
+      if (!scrollContainer) return;
+
+      const viewportHeight = window.visualViewport
+        ? window.visualViewport.height
+        : window.innerHeight;
+
+      const rect = textarea.getBoundingClientRect();
+
+      if (rect.bottom <= viewportHeight - 8) return;
+
+      const overflow = rect.bottom - viewportHeight + 16;
+      scrollContainer.scrollBy({ top: overflow, behavior: 'smooth' });
+    }
+
     stage.addEventListener('focusin', (e) => {
       const textarea = e.target.closest('textarea');
       if (!textarea) return;
-      setTimeout(() => {
-        textarea.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }, 300);
+      setTimeout(() => scrollTextareaIntoView(textarea), 350);
     });
 
     if (window.visualViewport) {
       window.visualViewport.addEventListener('resize', () => {
         const activeEl = document.activeElement;
         if (activeEl?.matches('textarea') && activeEl.closest('#quiz')) {
-          activeEl.scrollIntoView({ block: 'center' });
+          scrollTextareaIntoView(activeEl);
         }
       });
     }
